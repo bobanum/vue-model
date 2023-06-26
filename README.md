@@ -1,6 +1,11 @@
 # @bobanum/vue-model
 
-Vue Model system based on Laravel Models and Queries.
+<center>
+
+**_Vue.js_ Model system based on _Laravel_ Models and Queries.**
+
+![](vue-model-logo.svg)
+</center>
 
 ## Installation
 
