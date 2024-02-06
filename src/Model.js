@@ -1,5 +1,4 @@
-import axios from 'axios';
-import Query from './Query';
+import Query from './Query.js';
 import { toSnakeCase } from './utils.js';
 
 /**
@@ -17,7 +16,7 @@ export default class Model {
      */
     static getUrl(...extra) {
         if (!this._url) {
-            this._url = (this.baseUrl ? this.baseUrl + "/" : "") + toSnakeCase(this.name);
+            this._url = (this.baseUrl ? this.baseUrl + "/" : "") + (this.tableName || toSnakeCase(this.name));
         }
         let result = this._url;
         if (extra.length > 0) {
@@ -38,19 +37,31 @@ export default class Model {
      * Retrieves all instances of the model.
      * @returns {Promise<any[]>} A promise that resolves to an array of model instances.
      */
-    static async all() {
-        const query = new Query(this);
-        return await query.all();
+    static async all(where = {}) {
+        const query = new Query(this, where);
+        return query.execute().then(response => this.from(this.getPayload(response)));
     }
 
     /**
      * Retrieves an instance of the model with the specified ID.
      * @param {number} id - The ID of the model instance.
      * @returns {Promise<any>} A promise that resolves to the model instance.
-     */
+    */
     static async find(id) {
-        const query = new Query(this);
-        return await query.find(id);
+        const query = new Query(this).find(id);
+        console.log('Model.find():', this.getPayload);
+        // return query.execute().then(response => this.from(this.getPayload(response)));
+        return query.execute().then(response => {
+            return this.from(this.getPayload(response));
+        });
+    }
+
+    /**
+     * 
+    */
+    static async of(model) {
+        const query = new Query(this).of(model);
+        return query.execute().then(response => this.from(this.getPayload(response)));
     }
 
     /**
@@ -115,7 +126,23 @@ export default class Model {
         }
         return response.data;
     }
-
+    // sync function postData(url = "", data = {}) {
+    //     // Default options are marked with *
+    //     const response = await fetch(url, {
+    //       method: "POST", // *GET, POST, PUT, DELETE, etc.
+    //       mode: "cors", // no-cors, *cors, same-origin
+    //       cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+    //       credentials: "same-origin", // include, *same-origin, omit
+    //       headers: {
+    //         "Content-Type": "application/json",
+    //         // 'Content-Type': 'application/x-www-form-urlencoded',
+    //       },
+    //       redirect: "follow", // manual, *follow, error
+    //       referrerPolicy: "no-referrer", // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
+    //       body: JSON.stringify(data), // body data type must match "Content-Type" header
+    //     });
+    //     return response.json(); // parses JSON response into native JavaScript objects
+    //   }
     /**
      * Deletes the current instance of the model.
      * @returns {Promise<Model>} A promise that resolves to the deleted model instance.

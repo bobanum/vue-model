@@ -1,13 +1,20 @@
 import axios from 'axios';
-import { toSnakeCase } from './utils';
+import { toSnakeCase } from './utils.js';
+import Model from './Model.js';
 
 /**
  * Represents a Query class.
  */
 export default class Query {
     table = '';
+    id = null;
     relations = [];
     model = null;
+    instance = null;
+    where = {};
+    orderBy = [];
+    limit = 0;
+    _of = null;
 
     /**
      * Creates a Query instance.
@@ -15,45 +22,65 @@ export default class Query {
      * @param {string|null} table - The table name for the query. If not provided, it will be derived from the model.
      */
     constructor(model, table = null) {
-        this.model = model;
-        this.table = table || model.table || toSnakeCase(model.name);
+        if (model instanceof Model) {
+            this.model = model.constructor;
+            this.instance = model;
+        } else {
+            this.model = model;
+        }
+        this.table = table || model.tableName || toSnakeCase(model.name);
     }
-
+    where() {
+        return this.execute();
+    }
     /**
      * Retrieves all instances matching the query.
      * @returns {Promise<any[]>} A promise that resolves to an array of model instances.
      */
-    async all() {
+    async execute() {
         try {
-            const url = `${this.model.getUrl()}${this.querystring}`;
-            const response = await axios.get(url);
-            const result = response.data.map(data => {
-                return this.model.from(data);
-            });
-            return result;
+            const options = {
+                method: "GET",
+                mode: "cors",
+                // cache: "no-cache",
+                // credentials: "same-origin",
+                // headers: {
+                // "Content-Type": "application/json",
+                // 'Content-Type': 'application/x-www-form-urlencoded',
+                // }
+            };
+            console.debug('Query.execute():', this.getUrl());
+            return fetch(this.getUrl(), options).then(response => response.json());
         } catch (error) {
             console.error('Error retrieving instances:', error);
             throw error;
         }
     }
 
+    getUrl(...extra) {
+        if (this._of) {
+            return `${this._of.getUrl(this.table, ...extra)}${this.querystring}`;
+        } else {
+            if (this.id) {
+                extra.unshift(this.id);
+            }
+            let url = (this.instance || this.model).getUrl(...extra);
+            return `${url}${this.querystring}`;
+        }
+    }
     /**
      * Retrieves an instance by its ID.
      * @param {number} id - The ID of the instance to find.
      * @returns {Promise<any>} A promise that resolves to the model instance.
      */
-    async find(id) {
-        try {
-            const url = `${this.model.getUrl(id)}${this.querystring}`;
-            const response = await axios.get(url);
-            const result = this.model.from(response.data);
-            return result;
-        } catch (error) {
-            console.error('Error retrieving instance:', error);
-            throw error;
-        }
+    find(id) {
+        this.id = id;
+        return this;
     }
-
+    of(model) {
+        this._of = new Query(model);
+        return this;
+    }
     /**
      * Specifies relations to be eager loaded for the query.
      * @param {...string} relations - The names of the relations to be eager loaded.
