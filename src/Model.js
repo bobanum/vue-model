@@ -9,14 +9,13 @@ export default class Model {
     static withRelations = [];
     static _url;
     static baseUrl = '/api';
-
     /**
      * Retrieves the URL for the model.
      * @returns {string} The URL for the model.
      */
     static getUrl(...extra) {
         if (!this._url) {
-            this._url = (this.baseUrl ? this.baseUrl + "/" : "") + (this.tableName || toSnakeCase(this.name));
+            this._url = (this.baseUrl ? this.baseUrl + "/" : "") + (this.entryPoint || toSnakeCase(this.name));
         }
         let result = this._url;
         if (extra.length > 0) {
@@ -49,7 +48,6 @@ export default class Model {
     */
     static async find(id) {
         const query = new Query(this).find(id);
-        console.log('Model.find():', this.getPayload);
         // return query.execute().then(response => this.from(this.getPayload(response)));
         return query.execute().then(response => {
             return this.from(this.getPayload(response));

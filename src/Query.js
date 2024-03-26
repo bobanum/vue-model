@@ -49,7 +49,6 @@ export default class Query {
                 // 'Content-Type': 'application/x-www-form-urlencoded',
                 // }
             };
-            console.debug('Query.execute():', this.getUrl());
             return fetch(this.getUrl(), options).then(response => response.json());
         } catch (error) {
             console.error('Error retrieving instances:', error);
