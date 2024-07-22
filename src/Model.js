@@ -8,12 +8,15 @@ export default class Model {
     static relations = {};
     static withRelations = [];
     static _url;
-    static baseUrl = '/api';
+    static baseUrl;
     /**
      * Retrieves the URL for the model.
      * @returns {string} The URL for the model.
      */
     static getUrl(...extra) {
+        if (this.baseUrl === undefined) {
+            this.baseUrl =  useRuntimeConfig().public.apiUrl || '';
+        }
         if (!this._url) {
             this._url = (this.baseUrl ? this.baseUrl + "/" : "") + (this.entryPoint || toSnakeCase(this.name));
         }
@@ -30,6 +33,10 @@ export default class Model {
      */
     getUrl() {
         return this.constructor.getUrl(this.id, ...arguments);
+    }
+
+    static getPayload(response) {
+        console.error('getPayload not implemented');
     }
 
     /**
