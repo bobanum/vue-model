@@ -1,6 +1,7 @@
+import EvaluationModel from '../example/EvaluationModel.js';
+import Collection from './Collection.js';
 import Query from './Query.js';
 import { toSnakeCase } from './utils.js';
-
 /**
  * Represents a Model class.
  */
@@ -8,17 +9,23 @@ export default class Model {
     static relations = {};
     static withRelations = [];
     static _url;
-    static baseUrl;
+    static baseUrl = '/api';
+
+
+    constructor(id) {
+        this.id = id;
+    }
+
     /**
      * Retrieves the URL for the model.
      * @returns {string} The URL for the model.
      */
     static getUrl(...extra) {
-        if (this.baseUrl === undefined) {
-            this.baseUrl =  useRuntimeConfig().public.apiUrl || '';
+        if (this.entryPoint) {
+            return `${this.baseUrl}/${this.entryPoint}`;
         }
         if (!this._url) {
-            this._url = (this.baseUrl ? this.baseUrl + "/" : "") + (this.entryPoint || toSnakeCase(this.name));
+            this._url = (this.baseUrl ? this.baseUrl + "/" : "") + toSnakeCase(this.name);
         }
         let result = this._url;
         if (extra.length > 0) {
@@ -35,29 +42,26 @@ export default class Model {
         return this.constructor.getUrl(this.id, ...arguments);
     }
 
-    static getPayload(response) {
-        console.error('getPayload not implemented');
-    }
-
     /**
      * Retrieves all instances of the model.
      * @returns {Promise<any[]>} A promise that resolves to an array of model instances.
      */
     static async all(where = {}) {
         const query = new Query(this, where);
-        return query.execute().then(response => this.from(this.getPayload(response)));
+        const response = await query.execute();
+        return this.fromPayload(response);
     }
 
     /**
      * Retrieves an instance of the model with the specified ID.
      * @param {number} id - The ID of the model instance.
      * @returns {Promise<any>} A promise that resolves to the model instance.
-    */
+     */
     static async find(id) {
         const query = new Query(this).find(id);
-        // return query.execute().then(response => this.from(this.getPayload(response)));
+        // return query.execute().then(response => this.from(this.fromPayload(response)));
         return query.execute().then(response => {
-            return this.from(this.getPayload(response));
+            return this.from(this.fromPayload(response));
         });
     }
 
@@ -66,7 +70,7 @@ export default class Model {
     */
     static async of(model) {
         const query = new Query(this).of(model);
-        return query.execute().then(response => this.from(this.getPayload(response)));
+        return query.execute().then(response => this.from(this.fromPayload(response)));
     }
 
     /**
@@ -78,6 +82,10 @@ export default class Model {
         const query = new Query(this);
         return query.with(...relations);
     }
+    static fromPayload(payload) {
+        console.warn('fromPayload must be implemented in the derived class');
+        return payload;
+    }
 
     /**
      * Creates a model instance from the provided data object.
@@ -86,10 +94,11 @@ export default class Model {
      */
     static from(data) {
         if (Array.isArray(data)) {
-            return data.map(object => this.from(object));
+            return this.fromArray(data);
         }
 
         const result = Object.assign(Object.create(this.prototype), data);
+        
         for (const name in this.relations) {
             const relation = this.relations[name];
             if (result[relation.name]) {
@@ -101,10 +110,19 @@ export default class Model {
                 });
             }
         }
-
+        
         return result;
     }
 
+    /**
+     * Creates a new instance of Model from an array.
+     * 
+     * @param {Array} array - The array to create the Model instance from.
+     * @returns {Collection[Model]} - The new Model instance.
+     */
+    static fromArray(array) {
+        return new Collection(array).walk((item) => this.from(item));
+    }
     /**
      * Loads a model dynamically.
      * @param {string|Function} model - The name or reference of the model to load.
@@ -124,30 +142,23 @@ export default class Model {
      */
     static async delete(ids) {
         let response = null;
+
         if (Array.isArray(ids)) {
-            response = await axios.post(this.getUrl('delete'), { ids });
+            response = await fetch(this.getUrl('delete'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ ids }),
+            });
         } else {
-            response = await axios.delete(this.getUrl(ids, 'delete'));
+            response = await fetch(this.getUrl(ids, 'delete'), {
+                method: 'DELETE',
+            });
         }
-        return response.data;
+
+        return await response.json();
     }
-    // sync function postData(url = "", data = {}) {
-    //     // Default options are marked with *
-    //     const response = await fetch(url, {
-    //       method: "POST", // *GET, POST, PUT, DELETE, etc.
-    //       mode: "cors", // no-cors, *cors, same-origin
-    //       cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-    //       credentials: "same-origin", // include, *same-origin, omit
-    //       headers: {
-    //         "Content-Type": "application/json",
-    //         // 'Content-Type': 'application/x-www-form-urlencoded',
-    //       },
-    //       redirect: "follow", // manual, *follow, error
-    //       referrerPolicy: "no-referrer", // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
-    //       body: JSON.stringify(data), // body data type must match "Content-Type" header
-    //     });
-    //     return response.json(); // parses JSON response into native JavaScript objects
-    //   }
     /**
      * Deletes the current instance of the model.
      * @returns {Promise<Model>} A promise that resolves to the deleted model instance.
@@ -157,11 +168,14 @@ export default class Model {
             return this;
         }
         try {
-            const response = await axios.delete(this.getUrl());
-            if (response.data.success) {
+            const response = await fetch(this.getUrl(), {
+                method: 'DELETE'
+            });
+            const data = await response.json();
+            if (data.success) {
                 this.id = undefined;
             } else {
-                console.error(response.data);
+                console.error(data);
             }
         } catch (error) {
             console.error('Error deleting:', error);
@@ -170,30 +184,40 @@ export default class Model {
     }
 
     /**
-     * Saves the current instance of the model.
-     * @returns {Promise<Model>} A promise that resolves to the saved model instance.
-     */
+         * Saves the current instance of the model.
+         * @returns {Promise<Model>} A promise that resolves to the saved model instance.
+         */
     async save() {
         let response = null;
         console.log(this.id);
-        if (!this.id) {
-            response = await axios.post(this.constructor.getUrl(), this);
-        } else {
-            response = await axios.put(this.getUrl(), this);
+        const url = this.id ? this.getUrl() : this.constructor.getUrl();
+        const method = this.id ? 'PUT' : 'POST';
+
+        try {
+            response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(this)
+            });
+            const data = await response.json();
+            if (data.status === 'success') {
+                this.id = data.item.id;
+            } else {
+                console.error(data);
+            }
+        } catch (error) {
+            console.error('Error saving:', error);
         }
-        if (response.data.status === 'success') {
-            this.id = response.data.item.id;
-        } else {
-            console.error(response.data);
-        }
+
         console.log(this, this.id);
         return this;
     }
-
     /**
-     * Creates a clone of the current instance of the model.
-     * @returns {Model} A clone of the current instance of the model.
-     */
+ * Creates a clone of the current instance of the model.
+ * @returns {Model} A clone of the current instance of the model.
+ */
     clone() {
         return this.constructor.from({ ...this });
     }
