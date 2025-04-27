@@ -13,6 +13,20 @@
 npm install @bobanum/vue-model
 ```
 
+## configuration
+
+In your project, create a file named `vue-model.js` in the root directory and add the following code:
+
+```js
+import { Model as ModelBase } from '@bobanum/vue-model';
+export default class Model extends ModelBase {
+    static get baseUrl() {
+        return "http://localhost:8000/api";
+    } 
+}
+```
+
+
 ## Usage
 
 ```js

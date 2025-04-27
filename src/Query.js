@@ -2,7 +2,7 @@ import Model from './Model.js';
 import { toSnakeCase } from './utils.js';
 
 /**
- * Represents a Query class.
+ * Represents a Query class loosely based on Laravel's Eloquent {@link https://laravel.com/docs/11.x/queries|Query Builder}.
  */
 export default class Query {
     table = '';

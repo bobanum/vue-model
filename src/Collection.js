@@ -1,7 +1,11 @@
-const keyName = 'id';
+/**
+ * Represents a collection of items. Loosely based on the {@link https://laravel.com/docs/11.x/collections|Laravel Collection} class.
+ * @extends Map
+ */
+const keyName = 'id';	// Must stay outside the class definition because it is needed before super()
 export default class Collection extends Map {
 	constructor(iterable = []) {
-		iterable = iterable.map((item) => [item.id, item]);
+		iterable = iterable.map((item) => [item[keyName], item]);
 		super(iterable);		
 	}
 	walk(callback) {

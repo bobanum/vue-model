@@ -1,4 +1,3 @@
-import EvaluationModel from '../example/EvaluationModel.js';
 import Collection from './Collection.js';
 import Query from './Query.js';
 import { toSnakeCase } from './utils.js';
@@ -9,13 +8,14 @@ export default class Model {
     static relations = {};
     static withRelations = [];
     static _url;
-    static baseUrl = '/api';
-
-
+    
     constructor(id) {
         this.id = id;
     }
-
+    
+    static get baseUrl() {
+        return '/api';
+    }
     /**
      * Retrieves the URL for the model.
      * @returns {string} The URL for the model.
@@ -83,8 +83,7 @@ export default class Model {
         return query.with(...relations);
     }
     static fromPayload(payload) {
-        console.warn('fromPayload must be implemented in the derived class');
-        return payload;
+        return this.from(payload);
     }
 
     /**

@@ -5,8 +5,8 @@ export default class App {
 		EvaluationModel.all().then((evaluations) => {
 			console.log(evaluations);
 		});
-		// SchoolModel.all().then((schools) => {
-		// 	console.log(schools);
-		// });
+		SchoolModel.all().then((schools) => {
+			console.log(schools);
+		});
 	}
 }
